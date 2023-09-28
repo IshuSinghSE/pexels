@@ -2,3 +2,9 @@
 /client_secret.json
 /upload
 /videos
+/temp
+/data
+/music
+/upload
+*.png
+*.mp4
