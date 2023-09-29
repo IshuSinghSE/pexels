@@ -44,4 +44,8 @@ ffmpeg_command = [
 ]
 
 # Run the ffmpeg command using subprocess
-subprocess.run(ffmpeg_command)
+# subprocess.check_call("python -h",stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+subprocess.check_call("python -h")
+
+# subprocess.Popen(["sleep", "10"])
+# subprocess.Popen('ffmpeg', shell=True)

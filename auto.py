@@ -1,7 +1,9 @@
 # selenium modules
+import random
 import csv
 import subprocess
 from PIL import ImageFont
+from tqdm import tqdm
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -72,7 +74,7 @@ def fit_text(string: str, frame_width, font):
     return lines
 
 
-def create_lines(longline, start, end, fontsize=75, fontfile='OpenSansCondensedBold.ttf'):
+def create_lines(longline, start, end, fontsize=75, fontfile='OpenSansCondensedBold.ttf', firstPart=False, lastPart=False):
 
     fit = fit_text(longline, 700, fontfile)
 
@@ -88,45 +90,53 @@ def create_lines(longline, start, end, fontsize=75, fontfile='OpenSansCondensedB
     string = ''
     count = 0
     for line in texts:
-        string += ''',drawtext=fontfile={}:fontsize={}:text='{}':fontcolor=black:bordercolor=white:borderw=4:x=(w-text_w)/2:y=(h-text_h)/2-100+{}:'enable=between(t,{},{})' '''.format(fontfile,fontsize,str(line.replace("'", "'\\\\\\''")),count,start,end )
-        count += 100
+
+        lines = str(line.replace("'", "'\\\\\\''") + '...') if (count == (len(texts)-1) and firstPart) else str(line.replace(
+            "'", "'\\\\\\''") + '.') if (count == (len(texts)-1) and lastPart) else str(line.replace("'", "'\\\\\\''"))
+
+        string += ''',drawtext=fontfile={}:fontsize={}:text='{}':fontcolor=white:bordercolor=black:borderw=5:x=(w-text_w)/2:y=(h-text_h)/2-100+{}:'enable=between(t,{},{})' '''.format(
+            fontfile, fontsize, lines, count*100, start, end)
+        count += 1
 
     # print(string)
     return string
 
 
-def createVideo(content):
-    input_video = 'videos/pexels.mp4'
-    output_video = 'output.mp4'
+def video_choose(path):
+    dir = os.path.dirname(path)
+    video = os.path.join(dir, random.choice(os.listdir(path)))
+    return video
+
+
+def createVideo(content, count):
+    input_video = video_choose('videos\\ready\\')
+    output_video = f'upload/output{count}.mp4'
     font_file = 'BebasKai.ttf'
     text_file = 'OpenSansCondensedBold.ttf'
-    font_size = 75
-    font_color = 'white'
+    font_size = 95
+    font_color = 'black'
 
-    part1 = create_lines(content[1], 0.5, 7)
-    part2 = create_lines(content[2], 7.5, 10)
+    part1 = create_lines(content[1], 0.5, 7, firstPart=True)
+    part2 = create_lines(content[2], 7.5, 10, lastPart=True)
 
-    command = """ffmpeg -i {} -vf "drawtext=fontfile={}:fontsize={}:text={}:fontcolor={}:box=1:boxcolor=black@0.9:boxborderw=20:x=(w-text_w)/2:y=(h-text_h)/4-100{}{}" -c:v libx264 -c:a aac -t 10 {} -y""".format(input_video,font_file,font_size,content[0],font_color,str(part1),str(part2),output_video)
-    print(command)
+    command = """ffmpeg -i {} -vf "scale=1080:1920" -vf "drawtext=fontfile={}:fontsize={}:text={}:fontcolor={}:box=1:boxcolor=white@1.0:boxborderw=20:x=(w-text_w)/2:y=(h-text_h)/4-100{}{}" -c:v libx264 -c:a aac -t 10 {} -y """.format(
+        input_video, font_file, font_size, content[0], font_color, str(part1), str(part2), output_video)
     # time.sleep(5)
     os.system(command)
 
 
 def getText(file=None):
-    with open('data/table1.txt', 'r') as f:
-        data = f.readlines()
+    with open('data/table2.txt', 'r') as f:
+        data = f.readlines() 
 
     filename = "table1.csv"
     rows = []
-
-    for line in data[1:]:
+    count = 1
+    for line in tqdm(data[1:]):
         new = re.split(r" \d+ ", line.replace('.', '').strip('\n'))
-        # rows.append(new)
-        # print(new)
-        createVideo(new)
-        # text = fit_text(new[2], 1080)
-        # print(text)
-        break
+        createVideo(new, count)
+        count += 1
+        # break
 
     # print(rows)
     #     # writing to csv file
