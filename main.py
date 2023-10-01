@@ -1,19 +1,27 @@
-# selenium modules
-import random
+# System modules
+import re
+import os
 import csv
+import time
+import random
+import psutil
 import subprocess
-from PIL import ImageFont
+
 from tqdm import tqdm
+from PIL import ImageFont
+
+# selenium modules
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 
-import psutil
-import time
-import os
-import re
+# youtube-api modules
+import google_auth_oauthlib.flow
+import googleapiclient.discovery
+import googleapiclient.errors
+from googleapiclient.http import MediaFileUpload
 
 
 def browser():
@@ -21,19 +29,19 @@ def browser():
         os.system("taskkill /im chrome.exe /f")
 
     options = webdriver.ChromeOptions()
-    # options.add_experimental_option('excludeSwitches', ['enable-logging'])
-    # options.add_argument("--log-level=3")
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    options.add_argument("--log-level=3")
     options.add_argument(
-        "user-data-dir=C:\\Users\\Ishu1\\AppData\\Local\\Google\\Chrome Beta\\User Data\\")
+        "user-data-dir=C:/Users/Ishu1/AppData/Local/Google/Chrome Beta/User Data/")
     options.add_argument("profile-directory=Default")
-    options.binary_location = "C:\\Program Files\\Google\\Chrome Beta\\Application\\chrome.exe"
+    options.binary_location = "C:/Program Files/Google/Chrome Beta/Application/chrome.exe"
 
-    return webdriver.Chrome(options=options, service=Service('C:\\Users\\Ishu1\\OneDrive - Tech Outbox\\zzz\\chromedriver.exe'))
+    return webdriver.Chrome(options=options, service=Service('C:/Users/Ishu1/OneDrive - Tech Outbox/zzz/chromedriver.exe'))
 
 
-def getTable():
+def getData():
     driver = browser()
-    driver.get("https://chat.openai.com/c/dff8190f-125a-46f9-b62a-f42b6e537c40")
+    driver.get("https://chat.openai.com/c/083f5d0b-0609-4431-a82d-d638c836a81f")
     time.sleep(5)
 
     tables = driver.find_elements(By.CSS_SELECTOR, 'table')
@@ -47,6 +55,44 @@ def getTable():
         print('Got {} table!'.format(table+1))
 
     driver.quit()
+
+
+def upload(title, video_name="output.mp4"):
+    # Disable OAuthlib's HTTPS verification when running locally.
+    # *DO NOT* leave this option enabled in production
+    scopes = ["https://www.googleapis.com/auth/youtube.upload"]
+    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
+    api_service_name = "youtube"
+    api_version = "v3"
+    client_secrets_file = "assets/client_secret.json"
+
+    # Get credentials and create an API client
+    flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
+        client_secrets_file, scopes)
+    credentials = flow.run_console()
+    youtube = googleapiclient.discovery.build(
+        api_service_name, api_version, credentials=credentials)
+
+    request = youtube.videos().insert(
+        part="snippet,status",
+        body={
+            "snippet": {
+                "categoryId": "24",
+                "description": "Description of uploaded video.",
+                "title": title
+            },
+            "status": {
+                "privacyStatus": "private",
+                "publistAt": "2023-10-03T14:13+05:30"
+            }
+        },
+
+        media_body=MediaFileUpload(video_name, resumable=True)
+    )
+    response = request.execute()
+
+    print(response)
 
 
 def fit_text(string: str, frame_width, font):
@@ -74,7 +120,7 @@ def fit_text(string: str, frame_width, font):
     return lines
 
 
-def create_lines(longline, start, end, fontsize=75, fontfile='OpenSansCondensedBold.ttf', firstPart=False, lastPart=False):
+def create_lines(longline, start, end, fontsize=75, fontfile='assets/fonts/OpenSansCondensedBold.ttf', firstPart=False, lastPart=False):
 
     fit = fit_text(longline, 700, fontfile)
 
@@ -109,10 +155,9 @@ def video_choose(path):
 
 
 def createVideo(content, count):
-    input_video = video_choose('videos\\ready\\')
+    input_video = video_choose('assets/videos/ready/')
     output_video = f'upload/output{count}.mp4'
-    font_file = 'BebasKai.ttf'
-    text_file = 'OpenSansCondensedBold.ttf'
+    font_file = 'assets/fonts/BebasKai.ttf'
     font_size = 95
     font_color = 'black'
 
@@ -125,49 +170,22 @@ def createVideo(content, count):
     os.system(command)
 
 
-def getText(file=None):
-    with open('data/table2.txt', 'r') as f:
-        data = f.readlines() 
+def main(file=None):
+    if [] == os.listdir("assets/data/"):
+        getData()  # get data from chattGPT
 
-    filename = "table1.csv"
-    rows = []
+    filename = file if file is not None else 'assets/data/table1.txt'
+
+    with open(filename, 'r') as f:
+        data = f.readlines()
+
     count = 1
     for line in tqdm(data[1:]):
         new = re.split(r" \d+ ", line.replace('.', '').strip('\n'))
         createVideo(new, count)
         count += 1
-        # break
-
-    # print(rows)
-    #     # writing to csv file
-    # with open(filename, 'w') as csvfile:
-    #     # creating a csv writer object
-    #     csvwriter = csv.writer(csvfile)
-
-    #     # writing the fields
-    #     csvwriter.writerow(["Topic", "part1", "part2"])
-
-    #     # writing the data rows
-    #     csvwriter.writerows(rows)
+        break
 
 
-def split_txt_into_multi_lines(input_str: str, line_length: int):
-    words = input_str.split(" ")
-    line_count = 0
-    split_input = ""
-    for word in words:
-        line_count += 1
-        line_count += len(word)
-        if line_count > line_length:
-            split_input += "\n"
-            line_count = len(word) + 1
-            split_input += word
-            split_input += " "
-        else:
-            split_input += word
-            split_input += " "
-
-    return split_input
-
-
-getText()
+if __name__ == "__main__":
+    main()
