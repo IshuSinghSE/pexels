@@ -1,4 +1,5 @@
 # System modules
+
 import re
 import os
 import csv
@@ -9,6 +10,7 @@ import subprocess
 
 from tqdm import tqdm
 from PIL import ImageFont
+from datetime import datetime
 
 # selenium modules
 from selenium import webdriver
@@ -156,10 +158,14 @@ def video_choose(path):
 
 def createVideo(content, count):
     input_video = video_choose('assets/videos/ready/')
-    output_video = f'upload/output{count}.mp4'
+    date = datetime.now().strftime("%d-%m-%Y")
+    output_video = f'upload/{date}/output{count}.mp4'
     font_file = 'assets/fonts/BebasKai.ttf'
     font_size = 95
     font_color = 'black'
+
+    if not os.path.exists(f"upload/{date}"):
+        os.makedirs(f"upload/{date}")
 
     part1 = create_lines(content[1], 0.5, 7, firstPart=True)
     part2 = create_lines(content[2], 7.5, 10, lastPart=True)
@@ -174,7 +180,7 @@ def main(file=None):
     if [] == os.listdir("assets/data/"):
         getData()  # get data from chattGPT
 
-    filename = file if file is not None else 'assets/data/table1.txt'
+    filename = file if file is not None else f"table{len(os.listdir('assets/data/'))}.txt"
 
     with open(filename, 'r') as f:
         data = f.readlines()
@@ -184,7 +190,6 @@ def main(file=None):
         new = re.split(r" \d+ ", line.replace('.', '').strip('\n'))
         createVideo(new, count)
         count += 1
-        break
 
 
 if __name__ == "__main__":
